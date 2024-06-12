@@ -2,6 +2,9 @@
 
 #[allow(unused)]
 use super::{Pallet as Template, *};
+
+use codec::Encode;
+use frame_benchmarking::v2::extrinsic_call;
 use frame_benchmarking::v2::{
 	account, benchmarks, impl_benchmark_test_suite, whitelisted_caller, BenchmarkError,
 };
@@ -53,7 +56,7 @@ fn set_votes<T: Config>(ayes: u32, nays: u32, abstain: u32) -> DispatchResultWit
 		} else if (i as u32) < ayes + nays + abstain {
 			Pallet::<T>::make_vote(RawOrigin::Signed(voter).into(), Vote::Abstain)?;
 		} else {
-			break
+			break;
 		}
 	}
 
@@ -71,16 +74,38 @@ fn set_votes<T: Config>(ayes: u32, nays: u32, abstain: u32) -> DispatchResultWit
 mod benchmarks {
 	use super::*;
 
-	// Write a benchmark for `i` hashes.
 	#[benchmark]
-	fn hashing(i: Linear<0, 1_000>) {
+	fn hashing(i: Linear<0, 255>) {
 		#[block]
 		{
 			(0..i).for_each(|x| {
+				T::Hashing::hash(&x.encode());
 				// Just add some kind of hashing here!
 				// Hint: Look at the pallet code for some copyable code!
 			});
 		}
+	}
+	// Write a benchmark for `i` hashes.
+	#[benchmark]
+	fn counter(i: Linear<0, 255>) {
+		let caller: T::AccountId = whitelisted_caller();
+		let origin = RawOrigin::Signed(caller);
+
+		#[extrinsic_call]
+		counter(origin, i as u8);
+
+		assert!(MyValue::<T>::get() == i as u8);
+	}
+
+	#[benchmark]
+	fn claimer(i: Linear<0, 255>) {
+		let caller: T::AccountId = whitelisted_caller();
+		let origin = RawOrigin::Signed(caller.clone());
+
+		#[extrinsic_call]
+		claimer(origin, i as u8);
+
+		assert!(MyMap::<T>::get(i as u8) == Some(caller));
 	}
 
 	// Write a benchmark for the `counter` extrinsic.
